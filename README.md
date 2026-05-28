@@ -1,8 +1,12 @@
-# 龟龟投资框架 (Turtle Investment Framework)
+# 龟龟投资框架 (Turtle Investment Framework) — WorkBuddy 版
 
-AI 辅助的 A 股/港股/美股基本面分析系统。混合架构：Python 脚本完成确定性数据采集，LLM 提示词驱动定性分析与多因子评估。
+AI 辅助的 A 股/港股/美股基本面分析系统。混合架构：Python 脚本完成确定性数据采集，DeepSeek V4 Flash 驱动定性分析与多因子评估。
 
-> **当前版本：v2.0-beta** — PDF-first 单 Agent 架构 + 独立估值模块 + Pre-flight 合并 + 实战验证。详见 [CHANGELOG_V2.md](CHANGELOG_V2.md)。
+> **WorkBuddy 版**：原项目基于 Claude Code，已适配为 **Hermes Agent + DeepSeek V4 Flash API + WorkBuddy** 驱动。
+>
+> Python 脚本层（`scripts/`）保持不动，LLM 编排层从 Claude `.claude/commands/` 重构为 `.workbuddy/skills/` WorkBuddy Skill。
+>
+> **原版本：v2.0-beta** — PDF-first 单 Agent 架构 + 独立估值模块 + Pre-flight 合并 + 实战验证。详见 [CHANGELOG_V2.md](CHANGELOG_V2.md)。
 
 ## 核心功能
 
@@ -89,20 +93,29 @@ v2.0 采用 **共享模块 + 策略专属模块** 的分层架构，定性分析
 
 - Python >= 3.10
 - [Tushare Pro](https://tushare.pro/) 账号及 API Token
+- [DeepSeek](https://platform.deepseek.com/) API Key（用于 LLM 分析推理）
+- WorkBuddy / Hermes Agent 运行环境
 - （可选）pdfplumber 用于 PDF 解析
-- （内置）`/download-report` 命令用于自动下载年报
 
 ### 安装
 
 **首次安装：**
 
 ```bash
-git clone https://github.com/terancejiang/Turtle_investment_framework.git
+git clone https://github.com/derekdo0111/Turtle_investment_framework.git
 cd Turtle_investment_framework
 
 # 一键初始化（创建 venv、安装依赖、验证环境）
 bash init.sh
+
+# 配置 API Key
+cp .env.sample .env
+# 编辑 .env，填入 TUSHARE_TOKEN 和 DEEPSEEK_API_KEY
 ```
+
+**WorkBuddy 环境（Windows 推荐）：**
+
+参考 `init_workbuddy.bat`，或直接在 Git Bash 中运行 `bash init.sh`。
 
 **更新已有项目：**
 
@@ -138,17 +151,18 @@ export TUSHARE_TOKEN='your_token_here'
 
 ### 单股分析
 
-在 [Claude Code](https://claude.com/claude-code) 中使用 slash command：
+在 **WorkBuddy** 中使用内置 Skill：
 
 ```
-/turtle-analysis 600887          # 完整龟龟策略（定性 + 定量 + 估值）
-/business-analysis 600887        # 独立商业分析（PDF-first 6维度定性评估）
-/valuation 600887                # 独立估值分析（自动分类 + 多方法估值）
+turtle-investment 600887          # 完整龟龟策略（需先完成定性分析）
+business-analysis 600887          # 独立商业分析（PDF-first 6维度定性评估）
+valuation 600887                  # 独立估值分析（自动分类 + 多方法估值）
+download-annual-report 600887     # 下载年报 PDF
 ```
 
-`/turtle-analysis` 自动执行 Phase 0 → 1A → 1B → 2A → 2B → 3 完整流程。
-`/business-analysis` PDF-first 单 Agent 定性分析（年报 PDF + Tushare 数据）。
-`/valuation` 独立估值分析，需先运行 `/business-analysis`（依赖定性报告 + 市场数据）。
+**注意**：`turtle-investment` 和 `valuation` 需要先运行 `business-analysis` 生成定性分析报告和数据包。
+
+或者直接使用 WorkBuddy Python 环境运行脚本：
 
 ### 数据采集（仅 Phase 1A）
 
@@ -328,7 +342,15 @@ Turtle_investment_framework/
 │   ├── test_screener.py
 │   └── test_tushare_client.py
 ├── output/                        # 输出目录（gitignored）
+├── .workbuddy/                    # WorkBuddy 配置（取代 .claude/）
+│   └── skills/                    # WorkBuddy Skills（Hermes Agent 入口）
+│       ├── turtle-investment/     #   龟龟策略分析 Skill
+│       ├── business-analysis/     #   定性分析 Skill
+│       ├── valuation/             #   估值分析 Skill
+│       └── download-annual-report/ #  年报下载 Skill
 ├── init.sh                        # 环境初始化脚本
+├── init_workbuddy.bat             # WorkBuddy Windows 初始化指引
+├── .env.sample                    # 环境变量模板（含 DeepSeek API Key）
 ├── requirements.txt               # Python 依赖
 ├── CHANGELOG_V2.md                # v1→v2 变更日志
 ├── feature_list.json              # 功能清单
@@ -529,6 +551,7 @@ pdfplumber>=0.9.0     # PDF 文本提取
 requests>=2.28.0      # HTTP 请求
 pytest>=7.0.0         # 测试框架
 pyarrow>=10.0.0       # Parquet 缓存
+openai>=1.0.0         # DeepSeek V4 Flash API 调用（OpenAI 兼容接口）
 matplotlib>=3.5.0     # 可视化（Notebook）
 tqdm>=4.60.0          # 进度条
 jupyter>=1.0.0        # Notebook 运行环境

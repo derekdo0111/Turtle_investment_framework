@@ -18,11 +18,14 @@ ENV/
 *.swp
 *.swo
 
-# Claude Code
-.claude/*
-!.claude/commands/
-!.claude/skills/
-.claude/commands/report-to-html.md
+# Claude Code (legacy, removed in WorkBuddy port)
+.claude/
+
+# WorkBuddy
+.workbuddy/memory/
+.workbuddy/agents/
+
+# Agent config (legacy)
 .agents/
 
 # OS
